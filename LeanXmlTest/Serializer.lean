@@ -82,6 +82,7 @@ def roundTripsToNormal (e : Element) : Bool :=
 
 #guard err (elem "a" [] #[.Comment "a--b"]) == some (.invalidComment "a--b")
 #guard err (elem "a" [] #[.Comment "ab-"]) == some (.invalidComment "ab-")
+#guard err (elem "a" [] #[.Comment "a\r\nb"]) == some (.invalidComment "a\r\nb")
 #guard err (elem "a" [] #[.Comment "-a-b"]) == none
 #guard err (text "a\x00b") == some (.invalidChar '\x00' "a\x00b")
 #guard err (text "bell\x07") == some (.invalidChar '\x07' "bell\x07")
@@ -116,7 +117,7 @@ def special : List Char :=
 -- Every comment of up to three such characters that XML allows.
 #guard (strings special 3).all fun s =>
   let e := elem "a" [] #[.Comment s]
-  if (s.splitOn "--").length > 1 || s.endsWith "-" then err e == some (.invalidComment s)
+  if (s.splitOn "--").length > 1 || s.endsWith "-" || s.contains (· == '\r') then err e == some (.invalidComment s)
   else roundTrips e
 
 #guard roundTrips (text "&lt;not a tag&gt; &#38; <![CDATA[ not a section ]]>")

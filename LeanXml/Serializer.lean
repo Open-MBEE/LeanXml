@@ -9,7 +9,7 @@ import LeanXml.Basic
 `Element.toXml` writes an `Element` as XML text in which character data and attribute values
 are escaped. It returns an error, never ill-formed text, for a tree that XML 1.0 cannot
 represent: a name that is not a `Name`, a character outside `Char`, or a comment that
-contains `--` or ends with `-`.
+contains `--`, ends with `-` or holds a carriage return.
 
 The `ToString` instances of `LeanXml.Basic` are unchanged: they still print text and
 attribute values verbatim.
@@ -51,7 +51,8 @@ inductive SerializeError
   | invalidName (name : String)
   /-- A character outside the XML `Char` production; no character reference may name it. -/
   | invalidChar (c : Char) (text : String)
-  /-- A comment that contains `--` or ends with `-`. -/
+  /-- A comment that contains `--`, ends with `-`, or holds a carriage return, which a parser
+  would normalize to a line feed and a comment has no way to escape. -/
   | invalidComment (comment : String)
 deriving BEq, DecidableEq, Repr, Inhabited
 
@@ -59,7 +60,7 @@ instance : ToString SerializeError where
   toString
     | .invalidName n => s!"not an XML name: {n.quote}"
     | .invalidChar c t => s!"character U+{(String.ofList (Nat.toDigits 16 c.toNat)).toUpper} in {t.quote} is not an XML character"
-    | .invalidComment c => s!"an XML comment cannot contain \"--\" or end with \"-\": {c.quote}"
+    | .invalidComment c => s!"an XML comment cannot contain \"--\" or a carriage return, or end with \"-\": {c.quote}"
 
 private def checkChars (s : String) : Except SerializeError Unit :=
   match s.toList.find? (!isChar ·) with
@@ -98,7 +99,7 @@ def escapeAttrValue (s : String) : Except SerializeError String := do
 
 private def commentToXml (c : String) : Except SerializeError String := do
   checkChars c
-  if (c.splitOn "--").length > 1 || c.endsWith "-" then throw (.invalidComment c)
+  if (c.splitOn "--").length > 1 || c.endsWith "-" || c.contains (· == '\r') then throw (.invalidComment c)
   return s!"<!--{c}-->"
 
 private def attributesToXml (as : Attributes) : Except SerializeError String :=
