@@ -1,1 +1,2 @@
+import LeanXmlTest.Namespace
 import LeanXmlTest.Serializer
